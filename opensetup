@@ -5,3 +5,24 @@ set -e
 echo -e "\n\033[1m     --------- \033[0m"
 echo -e "\n\033[1m ||  OPENSETUP  || \033[0m\n"
 echo -e "\033[1m     --------- \033[0m\n"
+
+HOME_DIR="$HOME/.opensetup"
+
+# VPN Defaults
+PROTO="tcp"
+PORT="443"
+SERVER_NAME="openserver"
+CLIENT_NAME="openclient"
+
+IAM=$(whoami)
+if [ ${IAM} != "root" ]; then
+	echo -e "\033[0;31m\033[1m Only root is allowed to use this! \033[0m\n"
+	exit 1
+fi
+
+function create_home_dir() {
+	if [ ! -d "$HOME_DIR" ]; then
+		mkdir "$HOME_DIR"
+		echo "Created new oepnsetup directory: $HOME_DIR"
+	fi
+}
