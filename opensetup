@@ -1,0 +1,7 @@
+#!/bin/bash
+
+set -e
+
+echo -e "\n\033[1m     --------- \033[0m"
+echo -e "\n\033[1m ||  OPENSETUP  || \033[0m\n"
+echo -e "\033[1m     --------- \033[0m\n"
