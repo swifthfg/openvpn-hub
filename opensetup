@@ -13,12 +13,7 @@ PROTO="tcp"
 PORT="443"
 SERVER_NAME="openserver"
 CLIENT_NAME="openclient"
-
-IAM=$(whoami)
-if [ ${IAM} != "root" ]; then
-	echo -e "\033[0;31m\033[1m Only root is allowed to use this! \033[0m\n"
-	exit 1
-fi
+PACKAGES="openvpn easy-rsa"
 
 function create_home_dir() {
 	if [ ! -d "$HOME_DIR" ]; then
@@ -26,3 +21,13 @@ function create_home_dir() {
 		echo "Created new oepnsetup directory: $HOME_DIR"
 	fi
 }
+
+IAM=$(whoami)
+if [ ${IAM} == "root" ]; then #TODO !=
+	echo -e "\033[0;31m\033[1m Only root is allowed to use this! \033[0m\n"
+	exit 1
+fi
+
+apt-get update
+apt-get install -y $PACKAGES
+create_home_dir
