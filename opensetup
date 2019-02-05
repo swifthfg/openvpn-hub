@@ -6,28 +6,93 @@ echo -e "\n\033[1m     --------- \033[0m"
 echo -e "\n\033[1m ||  OPENSETUP  || \033[0m\n"
 echo -e "\033[1m     --------- \033[0m\n"
 
-HOME_DIR="$HOME/.opensetup"
-
-# VPN Defaults
-PROTO="tcp"
+#Defaults
 PORT="443"
+PROTO="tcp"
 SERVER_NAME="openserver"
-CLIENT_NAME="openclient"
 PACKAGES="openvpn easy-rsa"
+OPENSETUP_DIR="$HOME/.opensetup"
+
+if [ -z "$1" ];
+	then
+		CLIENT_NAME="openclient"
+		echo "CLIENT_NAME is set to default: openclient\n"
+	else
+		CLIENT_NAME=$1
+fi
 
 function create_home_dir() {
-	if [ ! -d "$HOME_DIR" ]; then
-		mkdir "$HOME_DIR"
-		echo "Created new oepnsetup directory: $HOME_DIR"
+	if [ ! -d "$OPENSETUP_DIR" ]; then
+		mkdir -p $OPENSETUP_DIR/keys
+		chmod 700 $OPENSETUP_DIR
+		cp /usr/share/easy-rsa/* $OPENSETUP_DIR
+		echo "Created new opensetup directory: $OPENSETUP_DIR"
 	fi
 }
 
+function set_key_variables() {
+	export EASY_RSA="$OPENSETUP_DIR"
+	export OPENSSL="openssl"
+	export PKCS11TOOL="pkcs11-tool"
+	export GREP="grep"
+	export KEY_CONFIG=`$EASY_RSA/whichopensslcnf $EASY_RSA`
+	export KEY_DIR="$EASY_RSA/keys"
+	export PKCS11_MODULE_PATH="dummy"
+	export PKCS11_PIN="dummy"
+	export KEY_SIZE=2048
+	export CA_EXPIRE=3650
+	export KEY_EXPIRE=3650
+	export KEY_COUNTRY="US"
+	export KEY_PROVINCE="CA"
+	export KEY_CITY="SanFrancisco"
+	export KEY_ORG="Fort-Funston"
+	export KEY_EMAIL="my@vpn.net"
+	export KEY_OU="MyVPN"
+	export KEY_NAME="$SERVER_NAME"
+}
+
+function clean_key_dir() {
+	if [ "$KEY_DIR" ]; then
+		rm -rf "$KEY_DIR"
+		mkdir "$KEY_DIR" && chmod go-rwx "$KEY_DIR" && touch "$KEY_DIR/index.txt" && echo 01 >"$KEY_DIR/serial"
+	fi
+}
+
+function build_certificate_authority() {
+	export EASY_RSA="${EASY_RSA:-.}"
+	"$EASY_RSA/pkitool" --batch --initca $*
+}
+
+function build_server_key() {
+	export EASY_RSA="${EASY_RSA:-.}"
+	"$EASY_RSA/pkitool" --batch --server $SERVER_NAME
+}
+
+function build_diffie_helman() {
+	if [ -d $KEY_DIR ] && [ $KEY_SIZE ]; then
+		$OPENSSL dhparam -out ${KEY_DIR}/dh${KEY_SIZE}.pem ${KEY_SIZE}
+}
+
+function generate_client_cert() {
+	export EASY_RSA="${EASY_RSA:-.}"
+	"$EASY_RSA/pkitool" --batch $CLIENT_NAME
+}
+
 IAM=$(whoami)
-if [ ${IAM} == "root" ]; then #TODO !=
+if [ ${IAM} != "root" ];
 	echo -e "\033[0;31m\033[1m Only root is allowed to use this! \033[0m\n"
 	exit 1
 fi
 
 apt-get update
 apt-get install -y $PACKAGES
+
 create_home_dir
+
+set_key_variables
+clean_key_dir
+build_server_key
+
+openvpn --genkey --secret $OPENSETUP_DIR/keys/ta.key
+
+generate_client_cert
