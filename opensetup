@@ -78,6 +78,50 @@ function generate_client_cert() {
 	"$EASY_RSA/pkitool" --batch $CLIENT_NAME
 }
 
+function generate_server_conf_for_openvpn() {
+	echo "port $PORT
+	proto $PROTO
+	dev tun
+	ca ca.crt
+	cert $SERVER_NAME.crt
+	key $SERVER_NAME.key
+	dh dh2048.pem
+	server 10.8.0.0 255.255.255.0
+	ifconfig-pool-persist ipp.txt
+	push \042redirect-gateway def1 bypass-dhcp\042
+	push \042dhcp-option DNS 8.8.8.8\042
+	push \042dhcp-option DNS 8.8.4.4\042
+	keepalive 10 120
+	tls-auth ta.key 0
+	key-direction 0
+	cipher AES-128-CBC
+	auth SHA256
+	comp-lzo
+	user nobody
+	group nogroup
+	persist-key
+	persist-tun
+	status openvpn-status.log
+
+	# no logging
+	verb 0
+	" > /etc/openvpn/server.conf
+}
+
+function allow_ipv4_forwarding() {
+	if sysctl net.ipv4.ip_forward | grep 0; then
+		echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+		sysctl -p
+	fi
+}
+
+function set_firewall() {
+	ufw allow OpenSSH
+	ufw allow $PORT/$PROTO
+	ufw disable
+	ufw enable
+}
+
 IAM=$(whoami)
 if [ ${IAM} != "root" ];
 	echo -e "\033[0;31m\033[1m Only root is allowed to use this! \033[0m\n"
@@ -91,8 +135,13 @@ create_home_dir
 
 set_key_variables
 clean_key_dir
+
+build_certificate_authority
 build_server_key
-
 openvpn --genkey --secret $OPENSETUP_DIR/keys/ta.key
-
 generate_client_cert
+cd $OPENSETUP_DIR/keys
+cp ca.crt $SERVER_NAME.crt $SERVER_NAME.key ta.key dh2048.pem /etc/openvpn
+generate_server_conf_for_openvpn
+allow_ipv4_forwarding
+set_firewall
