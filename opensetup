@@ -116,6 +116,11 @@ function allow_ipv4_forwarding() {
 }
 
 function set_firewall() {
+	echo -e "*nat
+	:POSTROUTING ACCEPT [0:0]
+	-A POSTROUTING -s 10.8.0.0/8 -o $(ip route | grep default | grep -Po '(?<=dev )(\S+)') -j MASQUERADE
+	COMMIT
+	" | cat - /etc/ufw/before.rules > /etc/ufw/before.rules
 	ufw allow OpenSSH
 	ufw allow $PORT/$PROTO
 	ufw disable
