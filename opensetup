@@ -12,6 +12,8 @@ PROTO="tcp"
 SERVER_NAME="openserver"
 PACKAGES="openvpn easy-rsa"
 OPENSETUP_DIR="$HOME/.opensetup"
+CA_DIR="$OPENSETUP_DIR/ca"
+CLIENT_CONF_DIR="$OPENSETUP_DIR/client"
 
 if [ -z "$1" ];
 	then
@@ -22,16 +24,18 @@ if [ -z "$1" ];
 fi
 
 function create_home_dir() {
+	echo "Creating opensetup directory...\n"
 	if [ ! -d "$OPENSETUP_DIR" ]; then
-		mkdir -p $OPENSETUP_DIR/keys
-		chmod 700 $OPENSETUP_DIR
-		cp /usr/share/easy-rsa/* $OPENSETUP_DIR
+		mkdir -p $CA_DIR/keys
+		chmod -R 700 $OPENSETUP_DIR
+		cp /usr/share/easy-rsa/* $CA_DIR
 		echo "Created new opensetup directory: $OPENSETUP_DIR"
 	fi
 }
 
 function set_key_variables() {
-	export EASY_RSA="$OPENSETUP_DIR"
+	echo "Exporting key variables...\n"
+	export EASY_RSA="$CA_DIR"
 	export OPENSSL="openssl"
 	export PKCS11TOOL="pkcs11-tool"
 	export GREP="grep"
@@ -52,6 +56,7 @@ function set_key_variables() {
 }
 
 function clean_key_dir() {
+	echo "Removing existing keys...\n"
 	if [ "$KEY_DIR" ]; then
 		rm -rf "$KEY_DIR"
 		mkdir "$KEY_DIR" && chmod go-rwx "$KEY_DIR" && touch "$KEY_DIR/index.txt" && echo 01 >"$KEY_DIR/serial"
@@ -59,26 +64,31 @@ function clean_key_dir() {
 }
 
 function build_certificate_authority() {
+	echo "Building ca.cert...\n"
 	export EASY_RSA="${EASY_RSA:-.}"
 	"$EASY_RSA/pkitool" --batch --initca $*
 }
 
 function build_server_key() {
+	echo "Building server key for $SERVER_NAME...\n"
 	export EASY_RSA="${EASY_RSA:-.}"
 	"$EASY_RSA/pkitool" --batch --server $SERVER_NAME
 }
 
 function build_diffie_helman() {
+	echo "Building diffie helman pem...\n"
 	if [ -d $KEY_DIR ] && [ $KEY_SIZE ]; then
 		$OPENSSL dhparam -out ${KEY_DIR}/dh${KEY_SIZE}.pem ${KEY_SIZE}
 }
 
 function generate_client_cert() {
+	echo "Generating client certificates...\n"
 	export EASY_RSA="${EASY_RSA:-.}"
 	"$EASY_RSA/pkitool" --batch $CLIENT_NAME
 }
 
 function generate_server_conf_for_openvpn() {
+	echo "Generating server configuration files for openvpn...\n"
 	echo "port $PORT
 	proto $PROTO
 	dev tun
@@ -109,6 +119,7 @@ function generate_server_conf_for_openvpn() {
 }
 
 function allow_ipv4_forwarding() {
+	echo "Enabling ipv4 forwarding...\n"
 	if sysctl net.ipv4.ip_forward | grep 0; then
 		echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
 		sysctl -p
@@ -116,6 +127,7 @@ function allow_ipv4_forwarding() {
 }
 
 function set_firewall() {
+	echo "Setting firewall rules...\n"
 	echo -e "*nat
 	:POSTROUTING ACCEPT [0:0]
 	-A POSTROUTING -s 10.8.0.0/8 -o $(ip route | grep default | grep -Po '(?<=dev )(\S+)') -j MASQUERADE
@@ -129,9 +141,46 @@ function set_firewall() {
 }
 
 function create_client_conf() {
-	mkdir -p ~/$OPENSETUP_DIR/files
-	chmod 700 ~/$OPENSETUP_DIR/files
-	
+	echo "Creating client configuration(.ovpn) for client: $CLIENT_NAME...\n"
+	OVPN_OUTPUT_DIR=$CLIENT_CONF_DIR/files
+	CLIENT_BASE_CONFIG=$CLIENT_CONF_DIR/client.conf
+
+	mkdir -p $OVPN_OUTPUT_DIR
+	chmod -R 700 $CLIENT_CONF_DIR
+	echo -e "client
+	dev tun
+	proto $PROTO
+	remote $(curl -s checkip.dyndns.org | sed -e 's/.*Current IP Address: //' -e 's/<.*$//') $PORT
+	resolv-retry infinite
+	nobind
+	user nobody
+	group nogroup
+	persist-key
+	persist-tun
+	cipher AES-128-CBC
+	auth SHA256
+	key-direction 1
+	remote-cert-tls server
+	comp-lzo
+	verb 0
+
+	# UPDATE RESOLVE CONF (UBUNTU)
+	# script-security 2
+	# up /etc/openvpn/update-resolv-conf
+	# down /etc/openvpn/update-resolv-conf" > $CLIENT_BASE_CONFIG
+
+	cat ${CLIENT_BASE_CONFIG} \
+	<(echo -e '<ca>') \
+	${KEY_DIR}/ca.crt \
+	<(echo -e '</ca>\n<cert>') \
+	${KEY_DIR}/${CLIENT_NAME}.crt \
+	<(echo -e '</cert>\n<key>') \
+	${KEY_DIR}/${CLIENT_NAME}.key \
+	<(echo -e '</key>\n<tls-auth>') \
+	${KEY_DIR}/ta.key \
+	<(echo -e '</tls-auth>') \
+	> ${OVPN_OUTPUT_DIR}/${CLIENT_NAME}.ovpn
+
 }
 
 IAM=$(whoami)
@@ -146,7 +195,7 @@ apt-get install -y $PACKAGES
 create_home_dir
 
 set_key_variables
-clean_key_dir
+# clean_key_dir
 
 build_certificate_authority
 build_server_key
@@ -159,3 +208,5 @@ allow_ipv4_forwarding
 set_firewall
 systemctl start openvpn@$SERVER_NAME
 systemctl enable openvpn@$SERVER_NAME
+
+echo "\nSetup completed successfully. Get ${OVPN_OUTPUT_DIR}/${CLIENT_NAME}.ovpn via sftp.\n"
