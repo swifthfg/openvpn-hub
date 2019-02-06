@@ -121,10 +121,15 @@ function set_firewall() {
 	-A POSTROUTING -s 10.8.0.0/8 -o $(ip route | grep default | grep -Po '(?<=dev )(\S+)') -j MASQUERADE
 	COMMIT
 	" | cat - /etc/ufw/before.rules > /etc/ufw/before.rules
+	cat /etc/default/ufw | sed 's/DEFAULT_FORWARD_POLICY="DROP"/DEFAULT_FORWARD_POLICY="ACCEPT"/' | tee /etc/default/ufw
 	ufw allow OpenSSH
 	ufw allow $PORT/$PROTO
 	ufw disable
 	ufw enable
+}
+
+function create_client_conf() {
+	mkdir -p ~/$OPENSETUP_DIR/files
 }
 
 IAM=$(whoami)
@@ -150,3 +155,5 @@ cp ca.crt $SERVER_NAME.crt $SERVER_NAME.key ta.key dh2048.pem /etc/openvpn
 generate_server_conf_for_openvpn
 allow_ipv4_forwarding
 set_firewall
+systemctl start openvpn@$SERVER_NAME
+systemctl enable openvpn@$SERVER_NAME
