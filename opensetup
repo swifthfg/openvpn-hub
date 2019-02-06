@@ -130,6 +130,8 @@ function set_firewall() {
 
 function create_client_conf() {
 	mkdir -p ~/$OPENSETUP_DIR/files
+	chmod 700 ~/$OPENSETUP_DIR/files
+	
 }
 
 IAM=$(whoami)
