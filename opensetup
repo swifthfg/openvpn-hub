@@ -79,6 +79,7 @@ function build_diffie_helman() {
 	echo "Building diffie helman pem...\n"
 	if [ -d $KEY_DIR ] && [ $KEY_SIZE ]; then
 		$OPENSSL dhparam -out ${KEY_DIR}/dh${KEY_SIZE}.pem ${KEY_SIZE}
+	fi
 }
 
 function generate_client_cert() {
@@ -132,7 +133,7 @@ function set_firewall() {
 	:POSTROUTING ACCEPT [0:0]
 	-A POSTROUTING -s 10.8.0.0/8 -o $(ip route | grep default | grep -Po '(?<=dev )(\S+)') -j MASQUERADE
 	COMMIT
-	" | cat - /etc/ufw/before.rules > /etc/ufw/before.rules
+	$(cat /etc/ufw/before.rules)" > /etc/ufw/before.rules
 	cat /etc/default/ufw | sed 's/DEFAULT_FORWARD_POLICY="DROP"/DEFAULT_FORWARD_POLICY="ACCEPT"/' | tee /etc/default/ufw
 	ufw allow OpenSSH
 	ufw allow $PORT/$PROTO
@@ -184,7 +185,7 @@ function create_client_conf() {
 }
 
 IAM=$(whoami)
-if [ ${IAM} != "root" ];
+if [ ${IAM} != "root" ]; then
 	echo -e "\033[0;31m\033[1m Only root is allowed to use this! \033[0m\n"
 	exit 1
 fi
@@ -195,13 +196,14 @@ apt-get install -y $PACKAGES
 create_home_dir
 
 set_key_variables
-# clean_key_dir
+clean_key_dir
 
 build_certificate_authority
 build_server_key
-openvpn --genkey --secret $OPENSETUP_DIR/keys/ta.key
+build_diffie_helman
+openvpn --genkey --secret $CA_DIR/keys/ta.key
 generate_client_cert
-cd $OPENSETUP_DIR/keys
+cd $CA_DIR/keys
 cp ca.crt $SERVER_NAME.crt $SERVER_NAME.key ta.key dh2048.pem /etc/openvpn
 generate_server_conf_for_openvpn
 allow_ipv4_forwarding
