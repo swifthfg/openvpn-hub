@@ -181,7 +181,6 @@ function create_client_conf() {
 	${KEY_DIR}/ta.key \
 	<(echo -e '</tls-auth>') \
 	> ${OVPN_OUTPUT_DIR}/${CLIENT_NAME}.ovpn
-
 }
 
 IAM=$(whoami)
