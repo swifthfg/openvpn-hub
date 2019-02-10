@@ -173,7 +173,7 @@ COMMIT" > /etc/ufw/before.rules
 	ufw allow OpenSSH
 	ufw allow $PORT/$PROTO
 	ufw disable
-	ufw enable
+	ufw --force enable
 }
 
 function create_client_conf() {
