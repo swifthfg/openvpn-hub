@@ -90,7 +90,7 @@ function generate_client_cert() {
 
 function generate_server_conf_for_openvpn() {
 	echo "Generating server configuration files for openvpn...\n"
-	echo "port $PORT
+	echo -e "port $PORT
 	proto $PROTO
 	dev tun
 	ca ca.crt
