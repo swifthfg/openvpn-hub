@@ -18,23 +18,23 @@ CLIENT_CONF_DIR="$OPENSETUP_DIR/client"
 if [ -z "$1" ];
 	then
 		CLIENT_NAME="openclient"
-		echo "CLIENT_NAME is set to default: openclient\n"
+		echo -e "CLIENT_NAME is set to default: openclient\n"
 	else
 		CLIENT_NAME=$1
 fi
 
 function create_home_dir() {
-	echo "Creating opensetup directory...\n"
+	echo -e "Creating opensetup directory...\n"
 	if [ ! -d "$OPENSETUP_DIR" ]; then
 		mkdir -p $CA_DIR/keys
 		chmod -R 700 $OPENSETUP_DIR
 		cp /usr/share/easy-rsa/* $CA_DIR
-		echo "Created new opensetup directory: $OPENSETUP_DIR"
+		echo -e "Created new opensetup directory: $OPENSETUP_DIR\n"
 	fi
 }
 
 function set_key_variables() {
-	echo "Exporting key variables...\n"
+	echo -e "Exporting key variables...\n"
 	export EASY_RSA="$CA_DIR"
 	export OPENSSL="openssl"
 	export PKCS11TOOL="pkcs11-tool"
@@ -56,7 +56,7 @@ function set_key_variables() {
 }
 
 function clean_key_dir() {
-	echo "Removing existing keys...\n"
+	echo -e "Removing existing keys...\n"
 	if [ "$KEY_DIR" ]; then
 		rm -rf "$KEY_DIR"
 		mkdir "$KEY_DIR" && chmod go-rwx "$KEY_DIR" && touch "$KEY_DIR/index.txt" && echo 01 >"$KEY_DIR/serial"
@@ -64,32 +64,32 @@ function clean_key_dir() {
 }
 
 function build_certificate_authority() {
-	echo "Building ca.cert...\n"
+	echo -e "Building ca.cert...\n"
 	export EASY_RSA="${EASY_RSA:-.}"
 	"$EASY_RSA/pkitool" --batch --initca $*
 }
 
 function build_server_key() {
-	echo "Building server key for $SERVER_NAME...\n"
+	echo -e "Building server key for $SERVER_NAME...\n"
 	export EASY_RSA="${EASY_RSA:-.}"
 	"$EASY_RSA/pkitool" --batch --server $SERVER_NAME
 }
 
 function build_diffie_helman() {
-	echo "Building diffie helman pem...\n"
+	echo -e "Building diffie helman pem...\n"
 	if [ -d $KEY_DIR ] && [ $KEY_SIZE ]; then
 		$OPENSSL dhparam -out ${KEY_DIR}/dh${KEY_SIZE}.pem ${KEY_SIZE}
 	fi
 }
 
 function generate_client_cert() {
-	echo "Generating client certificates...\n"
+	echo -e "Generating client certificates...\n"
 	export EASY_RSA="${EASY_RSA:-.}"
 	"$EASY_RSA/pkitool" --batch $CLIENT_NAME
 }
 
 function generate_server_conf_for_openvpn() {
-	echo "Generating server configuration files for openvpn...\n"
+	echo -e "Generating server configuration files for openvpn...\n"
 	echo -e "port $PORT
 	proto $PROTO
 	dev tun
@@ -120,19 +120,15 @@ function generate_server_conf_for_openvpn() {
 }
 
 function allow_ipv4_forwarding() {
-	echo "Enabling ipv4 forwarding...\n"
+	echo -e "Enabling ipv4 forwarding...\n"
 	if sysctl net.ipv4.ip_forward | grep 0; then
 		echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
 		sysctl -p
 	fi
 }
 
-# echo -e "lool $(cat before.rules2)" > before.rules2
-# echo -e "lool $(cat before.rules2)" | sed -e '/^$/d;w before.rules2'
-# sed -e '/^$/d' your_file.txt
-
 function set_firewall() {
-	echo "Setting firewall rules...\n"
+	echo -e "Setting firewall rules...\n"
 	echo -e "*nat
 :POSTROUTING ACCEPT [0:0]
 -A POSTROUTING -s 10.8.0.0/8 -o $(ip route | grep default | grep -Po '(?<=dev )(\S+)') -j MASQUERADE
@@ -177,7 +173,7 @@ COMMIT" > /etc/ufw/before.rules
 }
 
 function create_client_conf() {
-	echo "Creating client configuration(.ovpn) for client: $CLIENT_NAME...\n"
+	echo -e "Creating client configuration(.ovpn) for client: $CLIENT_NAME...\n"
 	OVPN_OUTPUT_DIR=$CLIENT_CONF_DIR/files
 	CLIENT_BASE_CONFIG=$CLIENT_CONF_DIR/client.conf
 
@@ -246,4 +242,4 @@ create_client_conf
 systemctl start openvpn@$SERVER_NAME
 systemctl enable openvpn@$SERVER_NAME
 
-echo "\nSetup completed successfully. Get ${OVPN_OUTPUT_DIR}/${CLIENT_NAME}.ovpn via sftp.\n"
+echo -e "\n\nSetup completed successfully. Get ${OVPN_OUTPUT_DIR}/${CLIENT_NAME}.ovpn via sftp.\n"
