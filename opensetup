@@ -242,4 +242,4 @@ create_client_conf
 systemctl start openvpn@$SERVER_NAME
 systemctl enable openvpn@$SERVER_NAME
 
-echo -e "\n\nSetup completed successfully. Get ${OVPN_OUTPUT_DIR}/${CLIENT_NAME}.ovpn via sftp.\n"
+echo -e "\n\nSetup completed successfully. Get ${OVPN_OUTPUT_DIR}/${CLIENT_NAME}.ovpn via sftp\n"
