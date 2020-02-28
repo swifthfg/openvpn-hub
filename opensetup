@@ -29,6 +29,7 @@ function create_home_dir() {
 		mkdir -p $CA_DIR/keys
 		chmod -R 700 $OPENSETUP_DIR
 		cp /usr/share/easy-rsa/* $CA_DIR
+		cp $CA_DIR/openssl-1.0.0.cnf $CA_DIR/openssl.cnf
 		echo -e "Created new opensetup directory: $OPENSETUP_DIR\n"
 	fi
 }
