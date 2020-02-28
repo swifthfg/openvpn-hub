@@ -4,6 +4,9 @@ set -e
 
 echo -e "\n\033[1m ||  OPENSETUP CREATE-CLIENT  || \033[0m\n"
 
+PORT="443"
+PROTO="tcp"
+SERVER_NAME="openserver"
 OPENSETUP_DIR="$HOME/.opensetup"
 CA_DIR="$OPENSETUP_DIR/ca"
 CLIENT_CONF_DIR="$OPENSETUP_DIR/client"
