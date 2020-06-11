@@ -61,12 +61,12 @@ function create_client_conf() {
 	key-direction 1
 	remote-cert-tls server
 	comp-lzo
-	verb 0
+	verb 3
 
 	# UPDATE RESOLVE CONF (UBUNTU)
-	# script-security 2
-	# up /etc/openvpn/update-resolv-conf
-	# down /etc/openvpn/update-resolv-conf" > $CLIENT_BASE_CONFIG
+	script-security 2
+	up /etc/openvpn/update-resolv-conf
+	down /etc/openvpn/update-resolv-conf" > $CLIENT_BASE_CONFIG
 
 	cat ${CLIENT_BASE_CONFIG} \
 	<(echo -e '<ca>') \
